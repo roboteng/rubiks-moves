@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum FaceTurn {
     U,
@@ -18,22 +20,19 @@ pub struct MoveList {
 
 impl MoveList {
     pub fn simplify(&self) -> Self {
-        match self
-            .moves
-            .iter()
-            .map(|m| match m {
-                FaceTurn::U => 1,
-                FaceTurn::URev => 3,
-                FaceTurn::U2 => 2,
-            })
-            .sum::<u8>()
-            % 4
-        {
-            0 => Self::default(),
-            1 => vec![FaceTurn::U].into(),
-            2 => vec![FaceTurn::U2].into(),
-            3 => vec![FaceTurn::URev].into(),
-            _ => panic!("unknown number of turns"),
+        let moves: BTreeMap<u8, _> =
+            BTreeMap::from([(1, FaceTurn::U), (2, FaceTurn::U2), (3, FaceTurn::URev)]);
+
+        match moves.get(
+            &(self
+                .moves
+                .iter()
+                .map(|m| moves.iter().find(|(_, &v)| v == *m).unwrap().0)
+                .sum::<u8>()
+                % 4),
+        ) {
+            None => Self::default(),
+            Some(&m) => vec![m].into(),
         }
     }
 }
