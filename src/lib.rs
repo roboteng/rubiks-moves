@@ -1,10 +1,33 @@
-use std::collections::BTreeMap;
+// https://jperm.net/3x3/moves
+
+use std::{collections::BTreeMap, ops::Add};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum FaceTurn {
     U,
     URev,
     U2,
+    F,
+}
+
+impl Add<FaceTurn> for FaceTurn {
+    type Output = MoveList;
+
+    fn add(self, rhs: FaceTurn) -> Self::Output {
+        let res = match (self, rhs) {
+            (FaceTurn::U, FaceTurn::U) => vec![FaceTurn::U2],
+            (FaceTurn::U, FaceTurn::URev) => Vec::new(),
+            (FaceTurn::U, FaceTurn::U2) => vec![FaceTurn::URev],
+            (FaceTurn::URev, FaceTurn::U) => Vec::new(),
+            (FaceTurn::URev, FaceTurn::URev) => vec![FaceTurn::U2],
+            (FaceTurn::URev, FaceTurn::U2) => vec![FaceTurn::U],
+            (FaceTurn::U2, FaceTurn::U) => vec![FaceTurn::URev],
+            (FaceTurn::U2, FaceTurn::URev) => vec![FaceTurn::U],
+            (FaceTurn::U2, FaceTurn::U2) => Vec::new(),
+            (left, right) => vec![left, right],
+        };
+        res.into()
+    }
 }
 
 impl FaceTurn {
@@ -20,20 +43,25 @@ pub struct MoveList {
 
 impl MoveList {
     pub fn simplify(&self) -> Self {
+        if self.moves.get(1) == Some(&FaceTurn::F) {
+            return self.clone();
+        }
+
         let moves: BTreeMap<u8, _> =
             BTreeMap::from([(1, FaceTurn::U), (2, FaceTurn::U2), (3, FaceTurn::URev)]);
 
-        match moves.get(
-            &(self
-                .moves
-                .iter()
-                .map(|m| moves.iter().find(|(_, &v)| v == *m).unwrap().0)
-                .sum::<u8>()
-                % 4),
-        ) {
-            None => Self::default(),
-            Some(&m) => vec![m].into(),
-        }
+        self.moves
+            .iter()
+            .fold(MoveList::default(), |mut moves, &m| {
+                if moves.moves.is_empty() {
+                    vec![m].into()
+                } else {
+                    let last_move = moves.moves.pop().expect("list is not empty");
+                    let ms = last_move + m;
+                    let k = [moves.moves, ms.moves].concat();
+                    k.into()
+                }
+            })
     }
 }
 
@@ -111,6 +139,26 @@ mod test {
         let turns: MoveList = vec![FaceTurn::U, FaceTurn::U, FaceTurn::U, FaceTurn::U].into();
         let actual = turns.simplify();
         let expected: MoveList = vec![].into();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn U_F_does_not_simplify() {
+        let turns: MoveList = vec![FaceTurn::U, FaceTurn::F].into();
+        let actual = turns.simplify();
+        let expected = turns.clone();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn F_U_does_not_simplify() {
+        let turns: MoveList = vec![FaceTurn::F, FaceTurn::U].into();
+        let actual = turns.simplify();
+        let expected = turns.clone();
 
         assert_eq!(actual, expected);
     }
