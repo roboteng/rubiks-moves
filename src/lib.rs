@@ -1,13 +1,15 @@
 // https://jperm.net/3x3/moves
 
-use std::{collections::BTreeMap, ops::Add};
+use std::ops::Add;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum FaceTurn {
-    U,
-    URev,
-    U2,
-    F,
+    U(u8),
+    D(u8),
+    F(u8),
+    B(u8),
+    L(u8),
+    R(u8),
 }
 
 impl Add<FaceTurn> for FaceTurn {
@@ -15,15 +17,31 @@ impl Add<FaceTurn> for FaceTurn {
 
     fn add(self, rhs: FaceTurn) -> Self::Output {
         let res = match (self, rhs) {
-            (FaceTurn::U, FaceTurn::U) => vec![FaceTurn::U2],
-            (FaceTurn::U, FaceTurn::URev) => Vec::new(),
-            (FaceTurn::U, FaceTurn::U2) => vec![FaceTurn::URev],
-            (FaceTurn::URev, FaceTurn::U) => Vec::new(),
-            (FaceTurn::URev, FaceTurn::URev) => vec![FaceTurn::U2],
-            (FaceTurn::URev, FaceTurn::U2) => vec![FaceTurn::U],
-            (FaceTurn::U2, FaceTurn::U) => vec![FaceTurn::URev],
-            (FaceTurn::U2, FaceTurn::URev) => vec![FaceTurn::U],
-            (FaceTurn::U2, FaceTurn::U2) => Vec::new(),
+            (FaceTurn::U(a), FaceTurn::U(b)) => match (a + b) % 4 {
+                0 => Vec::new(),
+                t => vec![FaceTurn::U(t)],
+            },
+            (FaceTurn::D(a), FaceTurn::D(b)) => match (a + b) % 4 {
+                0 => Vec::new(),
+                t => vec![FaceTurn::D(t)],
+            },
+            (FaceTurn::F(a), FaceTurn::F(b)) => match (a + b) % 4 {
+                0 => Vec::new(),
+                t => vec![FaceTurn::F(t)],
+            },
+            (FaceTurn::B(a), FaceTurn::B(b)) => match (a + b) % 4 {
+                0 => Vec::new(),
+                t => vec![FaceTurn::B(t)],
+            },
+            (FaceTurn::L(a), FaceTurn::L(b)) => match (a + b) % 4 {
+                0 => Vec::new(),
+                t => vec![FaceTurn::L(t)],
+            },
+            (FaceTurn::R(a), FaceTurn::R(b)) => match (a + b) % 4 {
+                0 => Vec::new(),
+                t => vec![FaceTurn::R(t)],
+            },
+
             (left, right) => vec![left, right],
         };
         res.into()
@@ -32,7 +50,17 @@ impl Add<FaceTurn> for FaceTurn {
 
 impl FaceTurn {
     pub fn inverse(&self) -> Self {
-        Self::URev
+        fn inv(t: &u8) -> u8 {
+            (t * 3) % 4
+        }
+        match self {
+            FaceTurn::U(t) => FaceTurn::U(inv(t)),
+            FaceTurn::D(t) => FaceTurn::D(inv(t)),
+            FaceTurn::F(t) => FaceTurn::F(inv(t)),
+            FaceTurn::B(t) => FaceTurn::B(inv(t)),
+            FaceTurn::L(t) => FaceTurn::L(inv(t)),
+            FaceTurn::R(t) => FaceTurn::R(inv(t)),
+        }
     }
 }
 
@@ -43,13 +71,6 @@ pub struct MoveList {
 
 impl MoveList {
     pub fn simplify(&self) -> Self {
-        if self.moves.get(1) == Some(&FaceTurn::F) {
-            return self.clone();
-        }
-
-        let moves: BTreeMap<u8, _> =
-            BTreeMap::from([(1, FaceTurn::U), (2, FaceTurn::U2), (3, FaceTurn::URev)]);
-
         self.moves
             .iter()
             .fold(MoveList::default(), |mut moves, &m| {
@@ -79,7 +100,7 @@ mod test {
     #[test]
     #[allow(non_snake_case)]
     fn U_then_U_rev_does_nothing() {
-        let moves: MoveList = vec![FaceTurn::U, FaceTurn::URev].into();
+        let moves: MoveList = vec![FaceTurn::U(1), FaceTurn::U(3)].into();
         let actual = moves.simplify();
 
         assert_eq!(actual, MoveList::default());
@@ -88,7 +109,7 @@ mod test {
     #[test]
     #[allow(non_snake_case)]
     fn U_simplifies_to_U() {
-        let moves: MoveList = vec![FaceTurn::U].into();
+        let moves: MoveList = vec![FaceTurn::U(1)].into();
         let actual = moves.simplify();
 
         assert_eq!(actual, moves);
@@ -97,8 +118,8 @@ mod test {
     #[test]
     #[allow(non_snake_case)]
     fn U_is_not_the_same_as_U_rev() {
-        let u: MoveList = vec![FaceTurn::U].into();
-        let u_rev: MoveList = vec![FaceTurn::URev].into();
+        let u: MoveList = vec![FaceTurn::U(1)].into();
+        let u_rev: MoveList = vec![FaceTurn::U(3)].into();
 
         assert_ne!(u, u_rev);
     }
@@ -106,9 +127,9 @@ mod test {
     #[test]
     #[allow(non_snake_case)]
     fn two_Us_simplifies_to_U2() {
-        let us: MoveList = vec![FaceTurn::U, FaceTurn::U].into();
+        let us: MoveList = vec![FaceTurn::U(1), FaceTurn::U(1)].into();
         let actual = us.simplify();
-        let expected: MoveList = vec![FaceTurn::U2].into();
+        let expected: MoveList = vec![FaceTurn::U(2)].into();
 
         assert_eq!(actual, expected);
     }
@@ -116,9 +137,9 @@ mod test {
     #[test]
     #[allow(non_snake_case)]
     fn U_then_U2_simplifies_to_URev() {
-        let turns: MoveList = vec![FaceTurn::U, FaceTurn::U2].into();
+        let turns: MoveList = vec![FaceTurn::U(1), FaceTurn::U(2)].into();
         let actual = turns.simplify();
-        let expected: MoveList = vec![FaceTurn::URev].into();
+        let expected: MoveList = vec![FaceTurn::U(3)].into();
 
         assert_eq!(actual, expected);
     }
@@ -126,9 +147,9 @@ mod test {
     #[test]
     #[allow(non_snake_case)]
     fn U2_then_U_simplifies_to_URev() {
-        let turns: MoveList = vec![FaceTurn::U2, FaceTurn::U].into();
+        let turns: MoveList = vec![FaceTurn::U(2), FaceTurn::U(1)].into();
         let actual = turns.simplify();
-        let expected: MoveList = vec![FaceTurn::URev].into();
+        let expected: MoveList = vec![FaceTurn::U(3)].into();
 
         assert_eq!(actual, expected);
     }
@@ -136,7 +157,13 @@ mod test {
     #[test]
     #[allow(non_snake_case)]
     fn four_Us_simplifies_to_nothing() {
-        let turns: MoveList = vec![FaceTurn::U, FaceTurn::U, FaceTurn::U, FaceTurn::U].into();
+        let turns: MoveList = vec![
+            FaceTurn::U(1),
+            FaceTurn::U(1),
+            FaceTurn::U(1),
+            FaceTurn::U(1),
+        ]
+        .into();
         let actual = turns.simplify();
         let expected: MoveList = vec![].into();
 
@@ -146,7 +173,7 @@ mod test {
     #[test]
     #[allow(non_snake_case)]
     fn U_F_does_not_simplify() {
-        let turns: MoveList = vec![FaceTurn::U, FaceTurn::F].into();
+        let turns: MoveList = vec![FaceTurn::U(1), FaceTurn::F(1)].into();
         let actual = turns.simplify();
         let expected = turns.clone();
 
@@ -156,9 +183,31 @@ mod test {
     #[test]
     #[allow(non_snake_case)]
     fn F_U_does_not_simplify() {
-        let turns: MoveList = vec![FaceTurn::F, FaceTurn::U].into();
+        let turns: MoveList = vec![FaceTurn::F(1), FaceTurn::U(1)].into();
         let actual = turns.simplify();
         let expected = turns.clone();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn complicated_move_simplification() {
+        let turns: MoveList = vec![
+            FaceTurn::U(1),
+            FaceTurn::R(3),
+            FaceTurn::F(1),
+            FaceTurn::F(3),
+            FaceTurn::R(1),
+            FaceTurn::U(2),
+            FaceTurn::L(2),
+            FaceTurn::D(1),
+            FaceTurn::D(3),
+            FaceTurn::L(2),
+            FaceTurn::U(1),
+        ]
+        .into();
+        let actual = turns.simplify();
+        let expected = MoveList::default();
 
         assert_eq!(actual, expected);
     }
