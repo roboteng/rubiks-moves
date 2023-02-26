@@ -42,6 +42,10 @@ impl Add<FaceTurn> for FaceTurn {
                 t => vec![FaceTurn::R(t)],
             },
 
+            (FaceTurn::U(u), FaceTurn::D(d)) => vec![FaceTurn::D(d), FaceTurn::U(u)],
+            (FaceTurn::L(l), FaceTurn::R(r)) => vec![FaceTurn::R(r), FaceTurn::L(l)],
+            (FaceTurn::F(f), FaceTurn::B(b)) => vec![FaceTurn::B(b), FaceTurn::F(f)],
+
             (left, right) => vec![left, right],
         };
         res.into()
@@ -71,6 +75,16 @@ pub struct MoveList {
 
 impl MoveList {
     pub fn simplify(&self) -> Self {
+        let mut prev_ter = self.clone();
+        let mut current_iter = self.single_pass();
+        while prev_ter != current_iter {
+            prev_ter = current_iter.clone();
+            current_iter = current_iter.single_pass();
+        }
+        current_iter
+    }
+
+    fn single_pass(&self) -> Self {
         self.moves
             .iter()
             .fold(MoveList::default(), |mut moves, &m| {
@@ -93,7 +107,7 @@ impl From<Vec<FaceTurn>> for MoveList {
 }
 
 #[cfg(test)]
-mod test {
+mod simplification_tests {
     use super::*;
     use pretty_assertions::{assert_eq, assert_ne};
 
@@ -208,6 +222,26 @@ mod test {
         .into();
         let actual = turns.simplify();
         let expected = MoveList::default();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn U2_D2_U2_simplifies_the_two_outside_U2s() {
+        let moves: MoveList = vec![FaceTurn::U(2), FaceTurn::D(2), FaceTurn::U(2)].into();
+        let actual = moves.simplify();
+        let expected = vec![FaceTurn::D(2)].into();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn D2_U2_D2_simplifies_the_two_outside_D2s() {
+        let moves: MoveList = vec![FaceTurn::D(2), FaceTurn::U(2), FaceTurn::D(2)].into();
+        let actual = moves.simplify();
+        let expected = vec![FaceTurn::U(2)].into();
 
         assert_eq!(actual, expected);
     }
