@@ -3,12 +3,8 @@
 use std::ops::Add;
 
 use nom::{
-    branch::alt,
-    bytes::complete::tag,
-    character::complete::space1,
-    combinator::map,
-    multi::{separated_list0, separated_list1},
-    IResult,
+    branch::alt, bytes::complete::tag, character::complete::space1, combinator::map,
+    multi::separated_list0, IResult,
 };
 use thiserror::Error;
 
@@ -114,7 +110,29 @@ impl MoveList {
             space1,
             alt((u_moves, d_moves, f_moves, b_moves, l_moves, r_moves)),
         )(s)?;
-        Ok(m.into())
+        if !s.is_empty() {
+            Err(MoveParseError::UnknownSymbol(s.to_string()))
+        } else {
+            Ok(m.into())
+        }
+    }
+
+    pub fn inverse(&self) -> Self {
+        Self {
+            moves: self.moves.iter().rev().map(|m| m.inverse()).collect(),
+        }
+    }
+
+    pub fn commute(&self, other: MoveList) -> MoveList {
+        self.clone() + &other + &self.inverse() + &other.inverse()
+    }
+
+    pub fn permute(&self, other: MoveList) -> MoveList {
+        self.clone() + &other + &self.inverse()
+    }
+
+    pub fn sexy() -> MoveList {
+        MoveList::from("R U R' U'").unwrap()
     }
 }
 
@@ -131,6 +149,16 @@ macro_rules! move_parser {
     };
 }
 
+impl Add<&MoveList> for MoveList {
+    type Output = MoveList;
+
+    fn add(self, rhs: &MoveList) -> Self::Output {
+        Self {
+            moves: [self.moves, rhs.moves.clone()].concat(),
+        }
+    }
+}
+
 move_parser!(u_moves, U, "U");
 move_parser!(d_moves, D, "D");
 move_parser!(f_moves, F, "F");
@@ -138,7 +166,7 @@ move_parser!(b_moves, B, "B");
 move_parser!(l_moves, L, "L");
 move_parser!(r_moves, R, "R");
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq, Eq)]
 pub enum MoveParseError {
     #[error("Unknown Symbol {0}")]
     UnknownSymbol(String),
@@ -354,6 +382,64 @@ mod parsing_tests {
             FaceTurn::F(3),
         ]
         .into();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn errors_on_unknown_input() {
+        let s = "R U foobar R' U'";
+        let actual = MoveList::from(s).unwrap_err();
+        let expected = MoveParseError::UnknownSymbol(" foobar R' U'".to_string());
+
+        assert_eq!(actual, expected);
+    }
+}
+
+#[cfg(test)]
+mod inverse_tests {
+    use super::*;
+    #[allow(unused_imports)]
+    use pretty_assertions::{assert_eq, assert_ne, assert_str_eq};
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn U_moves_to_U_rev() {
+        let m = MoveList::from("U").unwrap();
+        let actual = m.inverse();
+        let expected = MoveList::from("U'").unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn sexy_inverses_to_inverse_sexy() {
+        let m = MoveList::from("R U R' U'").unwrap();
+        let actual = m.inverse();
+        let expected = MoveList::from("U R U' R'").unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn R_and_U_commutes_to_sexy() {
+        let r = MoveList::from("R").unwrap();
+        let u = MoveList::from("U").unwrap();
+        let actual = r.commute(u);
+        let expected = MoveList::sexy();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn F_and_sexy_permute() {
+        let r = MoveList::from("F").unwrap();
+        let sexy = MoveList::sexy();
+        let actual = r.permute(sexy);
+        let expected = MoveList::from("F R U R' U' F'").unwrap();
 
         assert_eq!(actual, expected);
     }
