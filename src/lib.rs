@@ -2,6 +2,16 @@
 
 use std::ops::Add;
 
+use nom::{
+    branch::alt,
+    bytes::complete::tag,
+    character::complete::space1,
+    combinator::map,
+    multi::{separated_list0, separated_list1},
+    IResult,
+};
+use thiserror::Error;
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum FaceTurn {
     U(u8),
@@ -97,6 +107,46 @@ impl MoveList {
                     k.into()
                 }
             })
+    }
+
+    pub fn from(s: &str) -> Result<Self, MoveParseError> {
+        let (s, m) = separated_list0(
+            space1,
+            alt((u_moves, d_moves, f_moves, b_moves, l_moves, r_moves)),
+        )(s)?;
+        Ok(m.into())
+    }
+}
+
+macro_rules! move_parser {
+    ($fn_name: ident,   $dir: ident, $d: expr ) => {
+        fn $fn_name(input: &str) -> IResult<&str, FaceTurn> {
+            let (input, t) = alt((
+                map(tag(format!("{}2", $d).as_str()), |_| 2),
+                map(tag(format!("{}'", $d).as_str()), |_| 3),
+                map(tag(format!("{}", $d).as_str()), |_| 1),
+            ))(input)?;
+            Ok((input, FaceTurn::$dir(t)))
+        }
+    };
+}
+
+move_parser!(u_moves, U, "U");
+move_parser!(d_moves, D, "D");
+move_parser!(f_moves, F, "F");
+move_parser!(b_moves, B, "B");
+move_parser!(l_moves, L, "L");
+move_parser!(r_moves, R, "R");
+
+#[derive(Debug, Error)]
+pub enum MoveParseError {
+    #[error("Unknown Symbol {0}")]
+    UnknownSymbol(String),
+}
+
+impl From<nom::Err<nom::error::Error<&str>>> for MoveParseError {
+    fn from(value: nom::Err<nom::error::Error<&str>>) -> Self {
+        MoveParseError::UnknownSymbol(value.to_string())
     }
 }
 
@@ -242,6 +292,68 @@ mod simplification_tests {
         let moves: MoveList = vec![FaceTurn::D(2), FaceTurn::U(2), FaceTurn::D(2)].into();
         let actual = moves.simplify();
         let expected = vec![FaceTurn::U(2)].into();
+
+        assert_eq!(actual, expected);
+    }
+}
+
+#[cfg(test)]
+mod parsing_tests {
+    use super::*;
+    #[allow(unused_imports)]
+    use pretty_assertions::{assert_eq, assert_ne, assert_str_eq};
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn U() {
+        let s = "U";
+        let actual = MoveList::from(s).unwrap();
+        let expected = vec![FaceTurn::U(1)].into();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn F() {
+        let s = "F";
+        let actual = MoveList::from(s).unwrap();
+        let expected = vec![FaceTurn::F(1)].into();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn U2() {
+        let s = "U2";
+        let actual = MoveList::from(s).unwrap();
+        let expected = vec![FaceTurn::U(2)].into();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn t_perm_spaces() {
+        let s = "R U R' U' R' F R2 U' R' U' R U R' F'";
+        let actual = MoveList::from(s).unwrap();
+        let expected = vec![
+            FaceTurn::R(1),
+            FaceTurn::U(1),
+            FaceTurn::R(3),
+            FaceTurn::U(3),
+            FaceTurn::R(3),
+            FaceTurn::F(1),
+            FaceTurn::R(2),
+            FaceTurn::U(3),
+            FaceTurn::R(3),
+            FaceTurn::U(3),
+            FaceTurn::R(1),
+            FaceTurn::U(1),
+            FaceTurn::R(3),
+            FaceTurn::F(3),
+        ]
+        .into();
 
         assert_eq!(actual, expected);
     }
