@@ -9,6 +9,19 @@ use nom::{
 use thiserror::Error;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum Move {
+    FaceTurn(FaceTurn),
+}
+
+impl Move {
+    pub fn inverse(&self) -> Self {
+        match self {
+            Move::FaceTurn(t) => Move::FaceTurn(t.inverse()),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum FaceTurn {
     U(u8),
     D(u8),
@@ -16,6 +29,22 @@ pub enum FaceTurn {
     B(u8),
     L(u8),
     R(u8),
+}
+
+impl From<FaceTurn> for Move {
+    fn from(value: FaceTurn) -> Self {
+        Self::FaceTurn(value)
+    }
+}
+
+impl Add<Move> for Move {
+    type Output = MoveList;
+
+    fn add(self, rhs: Move) -> Self::Output {
+        match (self, rhs) {
+            (Move::FaceTurn(a), Move::FaceTurn(b)) => a + b,
+        }
+    }
 }
 
 impl Add<FaceTurn> for FaceTurn {
@@ -76,7 +105,7 @@ impl FaceTurn {
 
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct MoveList {
-    moves: Vec<FaceTurn>,
+    moves: Vec<Move>,
 }
 
 impl MoveList {
@@ -178,9 +207,14 @@ impl From<nom::Err<nom::error::Error<&str>>> for MoveParseError {
     }
 }
 
-impl From<Vec<FaceTurn>> for MoveList {
-    fn from(moves: Vec<FaceTurn>) -> Self {
-        Self { moves }
+impl<T> From<Vec<T>> for MoveList
+where
+    T: Into<Move> + Copy,
+{
+    fn from(moves: Vec<T>) -> Self {
+        Self {
+            moves: moves.iter().map(|&m| m.into()).collect(),
+        }
     }
 }
 
@@ -257,7 +291,7 @@ mod simplification_tests {
         ]
         .into();
         let actual = turns.simplify();
-        let expected: MoveList = vec![].into();
+        let expected: MoveList = MoveList { moves: Vec::new() };
 
         assert_eq!(actual, expected);
     }
