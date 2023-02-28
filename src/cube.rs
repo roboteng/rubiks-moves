@@ -1,6 +1,8 @@
 use std::fmt::Display;
 
-#[derive(Debug, PartialEq, Eq)]
+use crate::{FaceTurn, Move, MoveList};
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Side {
     Yellow,
     White,
@@ -10,30 +12,30 @@ enum Side {
     Green,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-struct Cube {
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Cube {
     corners: [Corner; 8],
     edges: [Edge; 12],
     centers: [Center; 6],
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 struct Corner {
     colors: [Side; 3],
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 struct Edge {
     colors: [Side; 2],
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 struct Center {
     color: Side,
 }
 
 impl Cube {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             corners: [
                 Corner {
@@ -112,6 +114,33 @@ impl Cube {
                 Center { color: Side::Green },
             ],
         }
+    }
+
+    pub fn apply(&self, moves: MoveList) -> Cube {
+        let mut cube = self.clone();
+        for m in moves.moves {
+            cube = cube.apply_move(m);
+        }
+        cube
+    }
+
+    fn apply_move(&self, m: Move) -> Cube {
+        let mut cube = self.clone();
+
+        match m {
+            Move::FaceTurn(FaceTurn::U(1)) => {
+                cube.corners[0] = self.corners[1];
+                cube.corners[1] = self.corners[6];
+                cube.corners[6] = self.corners[7];
+                cube.corners[7] = self.corners[0];
+                cube.edges[0] = self.edges[3];
+                cube.edges[1] = self.edges[0];
+                cube.edges[2] = self.edges[1];
+                cube.edges[3] = self.edges[2];
+            }
+            _ => todo!(),
+        };
+        cube
     }
 }
 
@@ -207,13 +236,31 @@ mod cube_tests {
     use pretty_assertions::{assert_eq, assert_ne, assert_str_eq};
 
     #[test]
-    fn sexy_has_order_6() {
+    fn basic_cube_display() {
         let cube = Cube::new();
         let actual = format!("{cube}");
         let expected = "⬛⬛⬛🟨🟨🟨⬛⬛⬛⬛⬛⬛
 ⬛⬛⬛🟨🟨🟨⬛⬛⬛⬛⬛⬛
 ⬛⬛⬛🟨🟨🟨⬛⬛⬛⬛⬛⬛
 🟦🟦🟦🟥🟥🟥🟩🟩🟩🟧🟧🟧
+🟦🟦🟦🟥🟥🟥🟩🟩🟩🟧🟧🟧
+🟦🟦🟦🟥🟥🟥🟩🟩🟩🟧🟧🟧
+⬛⬛⬛⬜⬜⬜⬛⬛⬛⬛⬛⬛
+⬛⬛⬛⬜⬜⬜⬛⬛⬛⬛⬛⬛
+⬛⬛⬛⬜⬜⬜⬛⬛⬛⬛⬛⬛";
+
+        assert_str_eq!(actual, expected);
+    }
+
+    #[test]
+    fn u_turn() {
+        let cube = Cube::new();
+        let cube = cube.apply(MoveList::from("U").unwrap());
+        let actual = format!("{cube}");
+        let expected = "⬛⬛⬛🟨🟨🟨⬛⬛⬛⬛⬛⬛
+⬛⬛⬛🟨🟨🟨⬛⬛⬛⬛⬛⬛
+⬛⬛⬛🟨🟨🟨⬛⬛⬛⬛⬛⬛
+🟥🟥🟥🟩🟩🟩🟧🟧🟧🟦🟦🟦
 🟦🟦🟦🟥🟥🟥🟩🟩🟩🟧🟧🟧
 🟦🟦🟦🟥🟥🟥🟩🟩🟩🟧🟧🟧
 ⬛⬛⬛⬜⬜⬜⬛⬛⬛⬛⬛⬛
