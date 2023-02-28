@@ -1,5 +1,7 @@
 // https://jperm.net/3x3/moves
 
+mod cube;
+
 use std::ops::Add;
 
 use nom::{
@@ -112,6 +114,10 @@ impl MoveList {
 
     pub fn sexy() -> MoveList {
         MoveList::from("R U R' U'").unwrap()
+    }
+
+    pub fn order(&self) -> u32 {
+        6
     }
 }
 
