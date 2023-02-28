@@ -9,19 +9,6 @@ use nom::{
 use thiserror::Error;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum Move {
-    FaceTurn(FaceTurn),
-}
-
-impl Move {
-    pub fn inverse(&self) -> Self {
-        match self {
-            Move::FaceTurn(t) => Move::FaceTurn(t.inverse()),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum FaceTurn {
     U(u8),
     D(u8),
@@ -31,60 +18,20 @@ pub enum FaceTurn {
     R(u8),
 }
 
-impl From<FaceTurn> for Move {
-    fn from(value: FaceTurn) -> Self {
-        Self::FaceTurn(value)
-    }
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum Move {
+    FaceTurn(FaceTurn),
 }
 
-impl Add<Move> for Move {
-    type Output = MoveList;
-
-    fn add(self, rhs: Move) -> Self::Output {
-        match (self, rhs) {
-            (Move::FaceTurn(a), Move::FaceTurn(b)) => a + b,
-        }
-    }
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
+pub struct MoveList {
+    moves: Vec<Move>,
 }
 
-impl Add<FaceTurn> for FaceTurn {
-    type Output = MoveList;
-
-    fn add(self, rhs: FaceTurn) -> Self::Output {
-        let res = match (self, rhs) {
-            (FaceTurn::U(a), FaceTurn::U(b)) => match (a + b) % 4 {
-                0 => Vec::new(),
-                t => vec![FaceTurn::U(t)],
-            },
-            (FaceTurn::D(a), FaceTurn::D(b)) => match (a + b) % 4 {
-                0 => Vec::new(),
-                t => vec![FaceTurn::D(t)],
-            },
-            (FaceTurn::F(a), FaceTurn::F(b)) => match (a + b) % 4 {
-                0 => Vec::new(),
-                t => vec![FaceTurn::F(t)],
-            },
-            (FaceTurn::B(a), FaceTurn::B(b)) => match (a + b) % 4 {
-                0 => Vec::new(),
-                t => vec![FaceTurn::B(t)],
-            },
-            (FaceTurn::L(a), FaceTurn::L(b)) => match (a + b) % 4 {
-                0 => Vec::new(),
-                t => vec![FaceTurn::L(t)],
-            },
-            (FaceTurn::R(a), FaceTurn::R(b)) => match (a + b) % 4 {
-                0 => Vec::new(),
-                t => vec![FaceTurn::R(t)],
-            },
-
-            (FaceTurn::U(u), FaceTurn::D(d)) => vec![FaceTurn::D(d), FaceTurn::U(u)],
-            (FaceTurn::L(l), FaceTurn::R(r)) => vec![FaceTurn::R(r), FaceTurn::L(l)],
-            (FaceTurn::F(f), FaceTurn::B(b)) => vec![FaceTurn::B(b), FaceTurn::F(f)],
-
-            (left, right) => vec![left, right],
-        };
-        res.into()
-    }
+#[derive(Debug, Error, PartialEq, Eq)]
+pub enum MoveParseError {
+    #[error("Unknown Symbol {0}")]
+    UnknownSymbol(String),
 }
 
 impl FaceTurn {
@@ -103,9 +50,12 @@ impl FaceTurn {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Default)]
-pub struct MoveList {
-    moves: Vec<Move>,
+impl Move {
+    pub fn inverse(&self) -> Self {
+        match self {
+            Move::FaceTurn(t) => Move::FaceTurn(t.inverse()),
+        }
+    }
 }
 
 impl MoveList {
@@ -165,6 +115,72 @@ impl MoveList {
     }
 }
 
+impl Add<FaceTurn> for FaceTurn {
+    type Output = MoveList;
+
+    fn add(self, rhs: FaceTurn) -> Self::Output {
+        let res = match (self, rhs) {
+            (FaceTurn::U(a), FaceTurn::U(b)) => match (a + b) % 4 {
+                0 => Vec::new(),
+                t => vec![FaceTurn::U(t)],
+            },
+            (FaceTurn::D(a), FaceTurn::D(b)) => match (a + b) % 4 {
+                0 => Vec::new(),
+                t => vec![FaceTurn::D(t)],
+            },
+            (FaceTurn::F(a), FaceTurn::F(b)) => match (a + b) % 4 {
+                0 => Vec::new(),
+                t => vec![FaceTurn::F(t)],
+            },
+            (FaceTurn::B(a), FaceTurn::B(b)) => match (a + b) % 4 {
+                0 => Vec::new(),
+                t => vec![FaceTurn::B(t)],
+            },
+            (FaceTurn::L(a), FaceTurn::L(b)) => match (a + b) % 4 {
+                0 => Vec::new(),
+                t => vec![FaceTurn::L(t)],
+            },
+            (FaceTurn::R(a), FaceTurn::R(b)) => match (a + b) % 4 {
+                0 => Vec::new(),
+                t => vec![FaceTurn::R(t)],
+            },
+
+            (FaceTurn::U(u), FaceTurn::D(d)) => vec![FaceTurn::D(d), FaceTurn::U(u)],
+            (FaceTurn::L(l), FaceTurn::R(r)) => vec![FaceTurn::R(r), FaceTurn::L(l)],
+            (FaceTurn::F(f), FaceTurn::B(b)) => vec![FaceTurn::B(b), FaceTurn::F(f)],
+
+            (left, right) => vec![left, right],
+        };
+        res.into()
+    }
+}
+
+impl From<FaceTurn> for Move {
+    fn from(value: FaceTurn) -> Self {
+        Self::FaceTurn(value)
+    }
+}
+
+impl Add<Move> for Move {
+    type Output = MoveList;
+
+    fn add(self, rhs: Move) -> Self::Output {
+        match (self, rhs) {
+            (Move::FaceTurn(a), Move::FaceTurn(b)) => a + b,
+        }
+    }
+}
+
+impl Add<&MoveList> for MoveList {
+    type Output = MoveList;
+
+    fn add(self, rhs: &MoveList) -> Self::Output {
+        Self {
+            moves: [self.moves, rhs.moves.clone()].concat(),
+        }
+    }
+}
+
 macro_rules! move_parser {
     ($fn_name: ident,   $dir: ident, $d: expr ) => {
         fn $fn_name(input: &str) -> IResult<&str, FaceTurn> {
@@ -178,28 +194,12 @@ macro_rules! move_parser {
     };
 }
 
-impl Add<&MoveList> for MoveList {
-    type Output = MoveList;
-
-    fn add(self, rhs: &MoveList) -> Self::Output {
-        Self {
-            moves: [self.moves, rhs.moves.clone()].concat(),
-        }
-    }
-}
-
 move_parser!(u_moves, U, "U");
 move_parser!(d_moves, D, "D");
 move_parser!(f_moves, F, "F");
 move_parser!(b_moves, B, "B");
 move_parser!(l_moves, L, "L");
 move_parser!(r_moves, R, "R");
-
-#[derive(Debug, Error, PartialEq, Eq)]
-pub enum MoveParseError {
-    #[error("Unknown Symbol {0}")]
-    UnknownSymbol(String),
-}
 
 impl From<nom::Err<nom::error::Error<&str>>> for MoveParseError {
     fn from(value: nom::Err<nom::error::Error<&str>>) -> Self {
