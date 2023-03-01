@@ -484,3 +484,10 @@ mod inverse_tests {
         assert_eq!(actual, expected);
     }
 }
+
+#[cfg(test)]
+mod cube_rotation_tests {
+    use super::*;
+    #[allow(unused_imports)]
+    use pretty_assertions::{assert_eq, assert_ne, assert_str_eq};
+}

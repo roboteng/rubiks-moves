@@ -24,9 +24,25 @@ struct Corner {
     colors: [Side; 3],
 }
 
+impl Corner {
+    fn rotate(&self) -> Self {
+        Self {
+            colors: [self.colors[1], self.colors[2], self.colors[0]],
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 struct Edge {
     colors: [Side; 2],
+}
+
+impl Edge {
+    fn flip(&self) -> Self {
+        Self {
+            colors: [self.colors[1], self.colors[0]],
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -138,6 +154,56 @@ impl Cube {
                 cube.edges[2] = self.edges[1];
                 cube.edges[3] = self.edges[2];
             }
+            Move::FaceTurn(FaceTurn::D(1)) => {
+                cube.corners[2] = self.corners[3];
+                cube.corners[3] = self.corners[4];
+                cube.corners[4] = self.corners[5];
+                cube.corners[5] = self.corners[2];
+                cube.edges[8] = self.edges[9];
+                cube.edges[9] = self.edges[10];
+                cube.edges[10] = self.edges[11];
+                cube.edges[11] = self.edges[8];
+            }
+            Move::FaceTurn(FaceTurn::R(1)) => {
+                cube.corners[0] = self.corners[3].rotate();
+                cube.corners[1] = self.corners[0].rotate().rotate();
+                cube.corners[2] = self.corners[1].rotate();
+                cube.corners[3] = self.corners[2].rotate().rotate();
+                cube.edges[0] = self.edges[5];
+                cube.edges[4] = self.edges[0];
+                cube.edges[8] = self.edges[4];
+                cube.edges[5] = self.edges[8];
+            }
+            Move::FaceTurn(FaceTurn::L(1)) => {
+                cube.corners[4] = self.corners[7].rotate();
+                cube.corners[5] = self.corners[4].rotate().rotate();
+                cube.corners[6] = self.corners[5].rotate();
+                cube.corners[7] = self.corners[6].rotate().rotate();
+                cube.edges[2] = self.edges[7];
+                cube.edges[6] = self.edges[2];
+                cube.edges[10] = self.edges[6];
+                cube.edges[7] = self.edges[10];
+            }
+            Move::FaceTurn(FaceTurn::F(1)) => {
+                cube.corners[0] = self.corners[7].rotate().rotate();
+                cube.corners[3] = self.corners[0].rotate();
+                cube.corners[4] = self.corners[3].rotate().rotate();
+                cube.corners[7] = self.corners[4].rotate();
+                cube.edges[1] = self.edges[6].flip();
+                cube.edges[5] = self.edges[1].flip();
+                cube.edges[9] = self.edges[5].flip();
+                cube.edges[6] = self.edges[9].flip();
+            }
+            Move::FaceTurn(FaceTurn::B(1)) => {
+                cube.corners[1] = self.corners[2].rotate();
+                cube.corners[6] = self.corners[1].rotate().rotate();
+                cube.corners[5] = self.corners[6].rotate();
+                cube.corners[2] = self.corners[5].rotate().rotate();
+                cube.edges[3] = self.edges[4].flip();
+                cube.edges[7] = self.edges[3].flip();
+                cube.edges[11] = self.edges[7].flip();
+                cube.edges[4] = self.edges[11].flip();
+            }
             _ => todo!(),
         };
         cube
@@ -172,7 +238,7 @@ impl Display for Cube {
 ⬛⬛⬛{}{}{}⬛⬛⬛⬛⬛⬛
 ⬛⬛⬛{}{}{}⬛⬛⬛⬛⬛⬛",
             self.corners[6].colors[0],
-            self.edges[1].colors[0],
+            self.edges[3].colors[0],
             self.corners[1].colors[0],
             self.edges[2].colors[0],
             self.centers[0].color,
@@ -268,5 +334,111 @@ mod cube_tests {
 ⬛⬛⬛⬜⬜⬜⬛⬛⬛⬛⬛⬛";
 
         assert_str_eq!(actual, expected);
+    }
+
+    #[test]
+    fn d_turn() {
+        let cube = Cube::new();
+        let cube = cube.apply(MoveList::from("D").unwrap());
+        let actual = format!("{cube}");
+        let expected = "⬛⬛⬛🟨🟨🟨⬛⬛⬛⬛⬛⬛
+⬛⬛⬛🟨🟨🟨⬛⬛⬛⬛⬛⬛
+⬛⬛⬛🟨🟨🟨⬛⬛⬛⬛⬛⬛
+🟦🟦🟦🟥🟥🟥🟩🟩🟩🟧🟧🟧
+🟦🟦🟦🟥🟥🟥🟩🟩🟩🟧🟧🟧
+🟧🟧🟧🟦🟦🟦🟥🟥🟥🟩🟩🟩
+⬛⬛⬛⬜⬜⬜⬛⬛⬛⬛⬛⬛
+⬛⬛⬛⬜⬜⬜⬛⬛⬛⬛⬛⬛
+⬛⬛⬛⬜⬜⬜⬛⬛⬛⬛⬛⬛";
+
+        assert_str_eq!(actual, expected);
+    }
+
+    #[test]
+    fn r_turn() {
+        let cube = Cube::new();
+        let cube = cube.apply(MoveList::from("R").unwrap());
+        let actual = format!("{cube}");
+        let expected = "⬛⬛⬛🟨🟨🟥⬛⬛⬛⬛⬛⬛
+⬛⬛⬛🟨🟨🟥⬛⬛⬛⬛⬛⬛
+⬛⬛⬛🟨🟨🟥⬛⬛⬛⬛⬛⬛
+🟦🟦🟦🟥🟥⬜🟩🟩🟩🟨🟧🟧
+🟦🟦🟦🟥🟥⬜🟩🟩🟩🟨🟧🟧
+🟦🟦🟦🟥🟥⬜🟩🟩🟩🟨🟧🟧
+⬛⬛⬛⬜⬜🟧⬛⬛⬛⬛⬛⬛
+⬛⬛⬛⬜⬜🟧⬛⬛⬛⬛⬛⬛
+⬛⬛⬛⬜⬜🟧⬛⬛⬛⬛⬛⬛";
+
+        assert_str_eq!(actual, expected);
+    }
+
+    #[test]
+    fn l_turn() {
+        let cube = Cube::new();
+        let cube = cube.apply(MoveList::from("L").unwrap());
+
+        let actual = format!("{cube}");
+        let expected = "⬛⬛⬛🟧🟨🟨⬛⬛⬛⬛⬛⬛
+⬛⬛⬛🟧🟨🟨⬛⬛⬛⬛⬛⬛
+⬛⬛⬛🟧🟨🟨⬛⬛⬛⬛⬛⬛
+🟦🟦🟦🟨🟥🟥🟩🟩🟩🟧🟧⬜
+🟦🟦🟦🟨🟥🟥🟩🟩🟩🟧🟧⬜
+🟦🟦🟦🟨🟥🟥🟩🟩🟩🟧🟧⬜
+⬛⬛⬛🟥⬜⬜⬛⬛⬛⬛⬛⬛
+⬛⬛⬛🟥⬜⬜⬛⬛⬛⬛⬛⬛
+⬛⬛⬛🟥⬜⬜⬛⬛⬛⬛⬛⬛";
+
+        assert_str_eq!(actual, expected);
+    }
+
+    #[test]
+    fn f_turn() {
+        let cube = Cube::new();
+        let cube = cube.apply(MoveList::from("F").unwrap());
+
+        let actual = format!("{cube}");
+        let expected = "⬛⬛⬛🟨🟨🟨⬛⬛⬛⬛⬛⬛
+⬛⬛⬛🟨🟨🟨⬛⬛⬛⬛⬛⬛
+⬛⬛⬛🟦🟦🟦⬛⬛⬛⬛⬛⬛
+🟦🟦⬜🟥🟥🟥🟨🟩🟩🟧🟧🟧
+🟦🟦⬜🟥🟥🟥🟨🟩🟩🟧🟧🟧
+🟦🟦⬜🟥🟥🟥🟨🟩🟩🟧🟧🟧
+⬛⬛⬛🟩🟩🟩⬛⬛⬛⬛⬛⬛
+⬛⬛⬛⬜⬜⬜⬛⬛⬛⬛⬛⬛
+⬛⬛⬛⬜⬜⬜⬛⬛⬛⬛⬛⬛";
+
+        assert_str_eq!(actual, expected);
+    }
+
+    #[test]
+    fn b_turn() {
+        let cube = Cube::new();
+
+        let cube = cube.apply(MoveList::from("B").unwrap());
+        let actual = format!("{cube}");
+        let expected = "⬛⬛⬛🟩🟩🟩⬛⬛⬛⬛⬛⬛
+⬛⬛⬛🟨🟨🟨⬛⬛⬛⬛⬛⬛
+⬛⬛⬛🟨🟨🟨⬛⬛⬛⬛⬛⬛
+🟨🟦🟦🟥🟥🟥🟩🟩⬜🟧🟧🟧
+🟨🟦🟦🟥🟥🟥🟩🟩⬜🟧🟧🟧
+🟨🟦🟦🟥🟥🟥🟩🟩⬜🟧🟧🟧
+⬛⬛⬛⬜⬜⬜⬛⬛⬛⬛⬛⬛
+⬛⬛⬛⬜⬜⬜⬛⬛⬛⬛⬛⬛
+⬛⬛⬛🟦🟦🟦⬛⬛⬛⬛⬛⬛";
+
+        assert_str_eq!(actual, expected);
+    }
+
+    #[test]
+    fn rotate_corner() {
+        let corner = Corner {
+            colors: [Side::Yellow, Side::Green, Side::Red],
+        };
+        let actual = corner.rotate();
+        let expected = Corner {
+            colors: [Side::Green, Side::Red, Side::Yellow],
+        };
+
+        assert_eq!(actual, expected);
     }
 }
