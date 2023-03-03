@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::{FaceTurn, Move, MoveList};
+use crate::moves::{FaceTurn, Move, MoveList};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Side {
