@@ -43,26 +43,28 @@ pub enum MoveParseError {
 
 impl FaceTurn {
     /// This creates the move that will 'undo' a given move
-    pub fn inverse(&self) -> Self {
-        fn inv(t: &u8) -> u8 {
+    #[must_use]
+    pub const fn inverse(&self) -> Self {
+        const fn inv(t: u8) -> u8 {
             (t * 3) % 4
         }
         match self {
-            FaceTurn::U(t) => FaceTurn::U(inv(t)),
-            FaceTurn::D(t) => FaceTurn::D(inv(t)),
-            FaceTurn::F(t) => FaceTurn::F(inv(t)),
-            FaceTurn::B(t) => FaceTurn::B(inv(t)),
-            FaceTurn::L(t) => FaceTurn::L(inv(t)),
-            FaceTurn::R(t) => FaceTurn::R(inv(t)),
+            Self::U(t) => Self::U(inv(*t)),
+            Self::D(t) => Self::D(inv(*t)),
+            Self::F(t) => Self::F(inv(*t)),
+            Self::B(t) => Self::B(inv(*t)),
+            Self::L(t) => Self::L(inv(*t)),
+            Self::R(t) => Self::R(inv(*t)),
         }
     }
 }
 
 impl Move {
     /// This creates the move that will 'undo' a given move
-    pub fn inverse(&self) -> Self {
+    #[must_use]
+    pub const fn inverse(&self) -> Self {
         match self {
-            Move::FaceTurn(t) => Move::FaceTurn(t.inverse()),
+            Self::FaceTurn(t) => Self::FaceTurn(t.inverse()),
         }
     }
 }
@@ -70,6 +72,7 @@ impl Move {
 impl MoveList {
     /// Creates a shorter set of moves that still leaves the cube in the same state at the end
     /// For example, combining U U into U2, or U U' into nothing
+    #[must_use]
     pub fn simplify(&self) -> Self {
         let mut prev_ter = self.clone();
         let mut current_iter = self.single_pass();
@@ -81,94 +84,100 @@ impl MoveList {
     }
 
     fn single_pass(&self) -> Self {
-        self.moves
-            .iter()
-            .fold(MoveList::default(), |mut moves, &m| {
-                if moves.moves.is_empty() {
-                    vec![m].into()
-                } else {
-                    let last_move = moves.moves.pop().expect("list is not empty");
-                    let ms = last_move + m;
-                    let k = [moves.moves, ms.moves].concat();
-                    k.into()
-                }
-            })
+        self.moves.iter().fold(Self::default(), |mut moves, &m| {
+            if moves.moves.is_empty() {
+                vec![m].into()
+            } else {
+                let last_move = moves.moves.pop().expect("list is not empty");
+                let ms = last_move + m;
+                let k = [moves.moves, ms.moves].concat();
+                k.into()
+            }
+        })
     }
 
     /// Creates a `MoveList` from a `&str`, mostly a convience function, or a way to take input from the user
+    ///
+    /// # Errors
+    ///
+    /// This errors when it is not given a space seperated list of single face turns e.g. U, F', or D2
     pub fn from(s: &str) -> Result<Self, MoveParseError> {
         let (s, m) = separated_list0(
             space1,
             alt((u_moves, d_moves, f_moves, b_moves, l_moves, r_moves)),
         )(s)?;
-        if !s.is_empty() {
-            Err(MoveParseError::UnknownSymbol(s.to_string()))
-        } else {
+        if s.is_empty() {
             Ok(m.into())
+        } else {
+            Err(MoveParseError::UnknownSymbol(s.to_string()))
         }
     }
 
     /// Calulates the inverse for a whole algorthm at once.
     /// If a given `MoveList` is performed on a cube, then `MoveList::inverse()` is perfermed, the cube will return to its origonal state
+    #[must_use]
     pub fn inverse(&self) -> Self {
         Self {
-            moves: self.moves.iter().rev().map(|m| m.inverse()).collect(),
+            moves: self.moves.iter().rev().map(Move::inverse).collect(),
         }
     }
 
     /// Combines two `MoveList`s in the form of ABA'B'
-    pub fn commute(&self, other: MoveList) -> MoveList {
-        self.clone() + &other + &self.inverse() + &other.inverse()
+    #[must_use]
+    pub fn commute(&self, other: &Self) -> Self {
+        self.clone() + other + &self.inverse() + &other.inverse()
     }
 
     /// Combines two `MoveList`s in the form of ABA'
-    pub fn permute(&self, other: MoveList) -> MoveList {
-        self.clone() + &other + &self.inverse()
+    #[must_use]
+    pub fn permute(&self, other: &Self) -> Self {
+        self.clone() + other + &self.inverse()
     }
 
     /// A sample `MoveList` that is used often in speedcubing
-    pub fn sexy() -> MoveList {
-        MoveList::from("R U R' U'").unwrap()
+    #[must_use]
+    pub fn sexy() -> Self {
+        Self::from("R U R' U'").expect("this doesn't panic")
     }
 }
 
-impl Add<FaceTurn> for FaceTurn {
+impl Add<Self> for FaceTurn {
     type Output = MoveList;
 
-    fn add(self, rhs: FaceTurn) -> Self::Output {
-        let res = match (self, rhs) {
-            (FaceTurn::U(a), FaceTurn::U(b)) => match (a + b) % 4 {
+    fn add(self, rhs: Self) -> Self::Output {
+        let new_moves = match (self, rhs) {
+            (Self::U(a), Self::U(b)) => match (a + b) % 4 {
                 0 => Vec::new(),
-                t => vec![FaceTurn::U(t)],
+                t => vec![Self::U(t)],
             },
-            (FaceTurn::D(a), FaceTurn::D(b)) => match (a + b) % 4 {
+            (Self::D(a), Self::D(b)) => match (a + b) % 4 {
                 0 => Vec::new(),
-                t => vec![FaceTurn::D(t)],
+                t => vec![Self::D(t)],
             },
-            (FaceTurn::F(a), FaceTurn::F(b)) => match (a + b) % 4 {
+            (Self::F(a), Self::F(b)) => match (a + b) % 4 {
                 0 => Vec::new(),
-                t => vec![FaceTurn::F(t)],
+                t => vec![Self::F(t)],
             },
-            (FaceTurn::B(a), FaceTurn::B(b)) => match (a + b) % 4 {
+            (Self::B(a), Self::B(b)) => match (a + b) % 4 {
                 0 => Vec::new(),
-                t => vec![FaceTurn::B(t)],
+                t => vec![Self::B(t)],
             },
-            (FaceTurn::L(a), FaceTurn::L(b)) => match (a + b) % 4 {
+            (Self::L(a), Self::L(b)) => match (a + b) % 4 {
                 0 => Vec::new(),
-                t => vec![FaceTurn::L(t)],
+                t => vec![Self::L(t)],
             },
-            (FaceTurn::R(a), FaceTurn::R(b)) => match (a + b) % 4 {
+            (Self::R(a), Self::R(b)) => match (a + b) % 4 {
                 0 => Vec::new(),
-                t => vec![FaceTurn::R(t)],
+                t => vec![Self::R(t)],
             },
 
-            (FaceTurn::U(u), FaceTurn::D(d)) => vec![FaceTurn::D(d), FaceTurn::U(u)],
-            (FaceTurn::L(l), FaceTurn::R(r)) => vec![FaceTurn::R(r), FaceTurn::L(l)],
-            (FaceTurn::F(f), FaceTurn::B(b)) => vec![FaceTurn::B(b), FaceTurn::F(f)],
+            (Self::U(u), Self::D(d)) => vec![Self::D(d), Self::U(u)],
+            (Self::L(l), Self::R(r)) => vec![Self::R(r), Self::L(l)],
+            (Self::F(f), Self::B(b)) => vec![Self::B(b), Self::F(f)],
 
             (left, right) => vec![left, right],
         };
-        res.into()
+        new_moves.into()
     }
 }
 
@@ -178,20 +187,20 @@ impl From<FaceTurn> for Move {
     }
 }
 
-impl Add<Move> for Move {
+impl Add<Self> for Move {
     type Output = MoveList;
 
-    fn add(self, rhs: Move) -> Self::Output {
+    fn add(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            (Move::FaceTurn(a), Move::FaceTurn(b)) => a + b,
+            (Self::FaceTurn(a), Self::FaceTurn(b)) => a + b,
         }
     }
 }
 
-impl Add<&MoveList> for MoveList {
-    type Output = MoveList;
+impl Add<&Self> for MoveList {
+    type Output = Self;
 
-    fn add(self, rhs: &MoveList) -> Self::Output {
+    fn add(self, rhs: &Self) -> Self::Output {
         Self {
             moves: [self.moves, rhs.moves.clone()].concat(),
         }
@@ -220,7 +229,7 @@ move_parser!(r_moves, R, "R");
 
 impl From<nom::Err<nom::error::Error<&str>>> for MoveParseError {
     fn from(value: nom::Err<nom::error::Error<&str>>) -> Self {
-        MoveParseError::UnknownSymbol(value.to_string())
+        Self::UnknownSymbol(value.to_string())
     }
 }
 
@@ -328,7 +337,7 @@ mod simplification_tests {
     fn F_U_does_not_simplify() {
         let turns: MoveList = vec![FaceTurn::F(1), FaceTurn::U(1)].into();
         let actual = turns.simplify();
-        let expected = turns.clone();
+        let expected = turns;
 
         assert_eq!(actual, expected);
     }
@@ -478,7 +487,7 @@ mod inverse_tests {
     fn R_and_U_commutes_to_sexy() {
         let r = MoveList::from("R").unwrap();
         let u = MoveList::from("U").unwrap();
-        let actual = r.commute(u);
+        let actual = r.commute(&u);
         let expected = MoveList::sexy();
 
         assert_eq!(actual, expected);
@@ -489,7 +498,7 @@ mod inverse_tests {
     fn F_and_sexy_permute() {
         let r = MoveList::from("F").unwrap();
         let sexy = MoveList::sexy();
-        let actual = r.permute(sexy);
+        let actual = r.permute(&sexy);
         let expected = MoveList::from("F R U R' U' F'").unwrap();
 
         assert_eq!(actual, expected);

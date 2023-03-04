@@ -26,7 +26,7 @@ struct Corner {
 }
 
 impl Corner {
-    fn rotate(&self) -> Self {
+    const fn rotate(self) -> Self {
         Self {
             colors: [self.colors[2], self.colors[0], self.colors[1]],
         }
@@ -39,7 +39,7 @@ struct Edge {
 }
 
 impl Edge {
-    fn flip(&self) -> Self {
+    const fn flip(self) -> Self {
         Self {
             colors: [self.colors[1], self.colors[0]],
         }
@@ -52,7 +52,7 @@ struct Center {
 }
 
 impl Cube {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             corners: [
                 Corner {
@@ -133,7 +133,7 @@ impl Cube {
         }
     }
 
-    pub fn apply(&self, moves: MoveList) -> Cube {
+    pub fn apply(&self, moves: MoveList) -> Self {
         let mut cube = self.clone();
         for m in moves.moves {
             cube = cube.apply_move(m);
@@ -141,7 +141,7 @@ impl Cube {
         cube
     }
 
-    fn apply_move(&self, m: Move) -> Cube {
+    fn apply_move(&self, m: Move) -> Self {
         let mut cube = self.clone();
 
         match m {
@@ -205,7 +205,30 @@ impl Cube {
                 cube.edges[11] = self.edges[7].flip();
                 cube.edges[4] = self.edges[11].flip();
             }
-            _ => todo!(),
+            Move::FaceTurn(FaceTurn::U(n)) => {
+                cube.apply_move(Move::FaceTurn(FaceTurn::U(1)));
+                cube.apply_move(Move::FaceTurn(FaceTurn::U(n - 1)));
+            }
+            Move::FaceTurn(FaceTurn::D(n)) => {
+                cube.apply_move(Move::FaceTurn(FaceTurn::D(1)));
+                cube.apply_move(Move::FaceTurn(FaceTurn::D(n - 1)));
+            }
+            Move::FaceTurn(FaceTurn::F(n)) => {
+                cube.apply_move(Move::FaceTurn(FaceTurn::F(1)));
+                cube.apply_move(Move::FaceTurn(FaceTurn::F(n - 1)));
+            }
+            Move::FaceTurn(FaceTurn::B(n)) => {
+                cube.apply_move(Move::FaceTurn(FaceTurn::B(1)));
+                cube.apply_move(Move::FaceTurn(FaceTurn::B(n - 1)));
+            }
+            Move::FaceTurn(FaceTurn::L(n)) => {
+                cube.apply_move(Move::FaceTurn(FaceTurn::L(1)));
+                cube.apply_move(Move::FaceTurn(FaceTurn::L(n - 1)));
+            }
+            Move::FaceTurn(FaceTurn::R(n)) => {
+                cube.apply_move(Move::FaceTurn(FaceTurn::R(1)));
+                cube.apply_move(Move::FaceTurn(FaceTurn::R(n - 1)));
+            }
         };
         cube
     }
@@ -214,14 +237,14 @@ impl Cube {
 impl Display for Side {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let square = match self {
-            Side::Yellow => "🟨",
-            Side::White => "⬜",
-            Side::Red => "🟥",
-            Side::Orange => "🟧",
-            Side::Blue => "🟦",
-            Side::Green => "🟩",
+            Self::Yellow => "🟨",
+            Self::White => "⬜",
+            Self::Red => "🟥",
+            Self::Orange => "🟧",
+            Self::Blue => "🟦",
+            Self::Green => "🟩",
         };
-        write!(f, "{}", square)
+        write!(f, "{square}")
     }
 }
 
