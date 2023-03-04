@@ -11,9 +11,9 @@ use crate::cube::Cube;
 
 /// Defines all possible single face turns
 ///
-/// A clockwise quarter turn (like U or F) is denoted as U(1) or F(1)
-/// A counter-clockwise turn (like U' or F') is denoted as U(3) or F(2)
-/// A double turn (like U2 or F2) is denoted as U(2) or F(2)
+/// - A clockwise quarter turn (like U or F) is denoted as `U(1)` or `F(1)`
+/// - A counter-clockwise turn (like U' or F') is denoted as `U(3)` or `F(3)`
+/// - A double turn (like U2 or F2) is denoted as `U(2)` or `F(2)`
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum FaceTurn {
     U(u8),
