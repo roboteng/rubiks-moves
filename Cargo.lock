@@ -95,8 +95,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "rubik-moves"
-version = "0.1.0"
+name = "rubiks-moves"
+version = "0.0.1"
 dependencies = [
  "itertools",
  "nom",
