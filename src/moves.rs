@@ -1,3 +1,4 @@
+//! Representations for algorithms taht can be performed
 use std::ops::Add;
 
 use nom::{
@@ -6,6 +7,11 @@ use nom::{
 };
 use thiserror::Error;
 
+/// Defines all possible single face turns
+///
+/// A clockwise quarter turn (like U or F) is denoted as U(1) or F(1)
+/// A counter-clockwise turn (like U' or F') is denoted as U(3) or F(2)
+/// A double turn (like U2 or F2) is denoted as U(2) or F(2)
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum FaceTurn {
     U(u8),
@@ -16,16 +22,19 @@ pub enum FaceTurn {
     R(u8),
 }
 
+/// A wrapper type that defines any possible move, including face turns, wide turn, cube rotations, and slice moves
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Move {
     FaceTurn(FaceTurn),
 }
 
+/// An algorithm you can perform on a cube
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct MoveList {
     pub(crate) moves: Vec<Move>,
 }
 
+/// Occurs when a string cannot be read as a `MoveList`
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum MoveParseError {
     #[error("Unknown Symbol {0}")]
@@ -33,6 +42,7 @@ pub enum MoveParseError {
 }
 
 impl FaceTurn {
+    /// This creates the move that will 'undo' a given move
     pub fn inverse(&self) -> Self {
         fn inv(t: &u8) -> u8 {
             (t * 3) % 4
@@ -49,6 +59,7 @@ impl FaceTurn {
 }
 
 impl Move {
+    /// This creates the move that will 'undo' a given move
     pub fn inverse(&self) -> Self {
         match self {
             Move::FaceTurn(t) => Move::FaceTurn(t.inverse()),
@@ -57,6 +68,8 @@ impl Move {
 }
 
 impl MoveList {
+    /// Creates a shorter set of moves that still leaves the cube in the same state at the end
+    /// For example, combining U U into U2, or U U' into nothing
     pub fn simplify(&self) -> Self {
         let mut prev_ter = self.clone();
         let mut current_iter = self.single_pass();
@@ -82,6 +95,7 @@ impl MoveList {
             })
     }
 
+    /// Creates a `MoveList` from a `&str`, mostly a convience function, or a way to take input from the user
     pub fn from(s: &str) -> Result<Self, MoveParseError> {
         let (s, m) = separated_list0(
             space1,
@@ -94,26 +108,27 @@ impl MoveList {
         }
     }
 
+    /// Calulates the inverse for a whole algorthm at once.
+    /// If a given `MoveList` is performed on a cube, then `MoveList::inverse()` is perfermed, the cube will return to its origonal state
     pub fn inverse(&self) -> Self {
         Self {
             moves: self.moves.iter().rev().map(|m| m.inverse()).collect(),
         }
     }
 
+    /// Combines two `MoveList`s in the form of ABA'B'
     pub fn commute(&self, other: MoveList) -> MoveList {
         self.clone() + &other + &self.inverse() + &other.inverse()
     }
 
+    /// Combines two `MoveList`s in the form of ABA'
     pub fn permute(&self, other: MoveList) -> MoveList {
         self.clone() + &other + &self.inverse()
     }
 
+    /// A sample `MoveList` that is used often in speedcubing
     pub fn sexy() -> MoveList {
         MoveList::from("R U R' U'").unwrap()
-    }
-
-    pub fn order(&self) -> u32 {
-        6
     }
 }
 

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::fmt::Display;
 
 use crate::moves::{FaceTurn, Move, MoveList};
