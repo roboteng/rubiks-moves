@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use std::fmt::Display;
 
-use crate::moves::{FaceTurn, Move, MoveList};
+use crate::moves::{Algorithm, FaceTurn, Move};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Side {
@@ -133,7 +133,7 @@ impl Cube {
         }
     }
 
-    pub fn apply(&self, moves: MoveList) -> Self {
+    pub fn apply(&self, moves: Algorithm) -> Self {
         let mut cube = self.clone();
         for m in moves.moves {
             cube = cube.apply_move(m);
@@ -206,28 +206,28 @@ impl Cube {
                 cube.edges[4] = self.edges[11].flip();
             }
             Move::FaceTurn(FaceTurn::U(n)) => {
-                cube.apply_move(Move::FaceTurn(FaceTurn::U(1)));
-                cube.apply_move(Move::FaceTurn(FaceTurn::U(n - 1)));
+                cube = cube.apply_move(Move::FaceTurn(FaceTurn::U(1)));
+                cube = cube.apply_move(Move::FaceTurn(FaceTurn::U(n - 1)));
             }
             Move::FaceTurn(FaceTurn::D(n)) => {
-                cube.apply_move(Move::FaceTurn(FaceTurn::D(1)));
-                cube.apply_move(Move::FaceTurn(FaceTurn::D(n - 1)));
+                cube = cube.apply_move(Move::FaceTurn(FaceTurn::D(1)));
+                cube = cube.apply_move(Move::FaceTurn(FaceTurn::D(n - 1)));
             }
             Move::FaceTurn(FaceTurn::F(n)) => {
-                cube.apply_move(Move::FaceTurn(FaceTurn::F(1)));
-                cube.apply_move(Move::FaceTurn(FaceTurn::F(n - 1)));
+                cube = cube.apply_move(Move::FaceTurn(FaceTurn::F(1)));
+                cube = cube.apply_move(Move::FaceTurn(FaceTurn::F(n - 1)));
             }
             Move::FaceTurn(FaceTurn::B(n)) => {
-                cube.apply_move(Move::FaceTurn(FaceTurn::B(1)));
-                cube.apply_move(Move::FaceTurn(FaceTurn::B(n - 1)));
+                cube = cube.apply_move(Move::FaceTurn(FaceTurn::B(1)));
+                cube = cube.apply_move(Move::FaceTurn(FaceTurn::B(n - 1)));
             }
             Move::FaceTurn(FaceTurn::L(n)) => {
-                cube.apply_move(Move::FaceTurn(FaceTurn::L(1)));
-                cube.apply_move(Move::FaceTurn(FaceTurn::L(n - 1)));
+                cube = cube.apply_move(Move::FaceTurn(FaceTurn::L(1)));
+                cube = cube.apply_move(Move::FaceTurn(FaceTurn::L(n - 1)));
             }
             Move::FaceTurn(FaceTurn::R(n)) => {
-                cube.apply_move(Move::FaceTurn(FaceTurn::R(1)));
-                cube.apply_move(Move::FaceTurn(FaceTurn::R(n - 1)));
+                cube = cube.apply_move(Move::FaceTurn(FaceTurn::R(1)));
+                cube = cube.apply_move(Move::FaceTurn(FaceTurn::R(n - 1)));
             }
         };
         cube
@@ -345,7 +345,7 @@ mod cube_tests {
     #[test]
     fn u_turn() {
         let cube = Cube::new();
-        let cube = cube.apply(MoveList::from("U").unwrap());
+        let cube = cube.apply(Algorithm::from("U").unwrap());
         let actual = format!("{cube}");
         let expected = "⬛⬛⬛🟨🟨🟨⬛⬛⬛⬛⬛⬛
 ⬛⬛⬛🟨🟨🟨⬛⬛⬛⬛⬛⬛
@@ -363,7 +363,7 @@ mod cube_tests {
     #[test]
     fn d_turn() {
         let cube = Cube::new();
-        let cube = cube.apply(MoveList::from("D").unwrap());
+        let cube = cube.apply(Algorithm::from("D").unwrap());
         let actual = format!("{cube}");
         let expected = "⬛⬛⬛🟨🟨🟨⬛⬛⬛⬛⬛⬛
 ⬛⬛⬛🟨🟨🟨⬛⬛⬛⬛⬛⬛
@@ -381,7 +381,7 @@ mod cube_tests {
     #[test]
     fn r_turn() {
         let cube = Cube::new();
-        let cube = cube.apply(MoveList::from("R").unwrap());
+        let cube = cube.apply(Algorithm::from("R").unwrap());
         let actual = format!("{cube}");
         let expected = "⬛⬛⬛🟨🟨🟥⬛⬛⬛⬛⬛⬛
 ⬛⬛⬛🟨🟨🟥⬛⬛⬛⬛⬛⬛
@@ -399,7 +399,7 @@ mod cube_tests {
     #[test]
     fn l_turn() {
         let cube = Cube::new();
-        let cube = cube.apply(MoveList::from("L").unwrap());
+        let cube = cube.apply(Algorithm::from("L").unwrap());
 
         let actual = format!("{cube}");
         let expected = "⬛⬛⬛🟧🟨🟨⬛⬛⬛⬛⬛⬛
@@ -418,7 +418,7 @@ mod cube_tests {
     #[test]
     fn f_turn() {
         let cube = Cube::new();
-        let cube = cube.apply(MoveList::from("F").unwrap());
+        let cube = cube.apply(Algorithm::from("F").unwrap());
 
         let actual = format!("{cube}");
         let expected = "⬛⬛⬛🟨🟨🟨⬛⬛⬛⬛⬛⬛
@@ -438,7 +438,7 @@ mod cube_tests {
     fn b_turn() {
         let cube = Cube::new();
 
-        let cube = cube.apply(MoveList::from("B").unwrap());
+        let cube = cube.apply(Algorithm::from("B").unwrap());
         let actual = format!("{cube}");
         let expected = "⬛⬛⬛🟩🟩🟩⬛⬛⬛⬛⬛⬛
 ⬛⬛⬛🟨🟨🟨⬛⬛⬛⬛⬛⬛

@@ -7,6 +7,8 @@ use nom::{
 };
 use thiserror::Error;
 
+use crate::cube::Cube;
+
 /// Defines all possible single face turns
 ///
 /// A clockwise quarter turn (like U or F) is denoted as U(1) or F(1)
@@ -28,13 +30,13 @@ pub enum Move {
     FaceTurn(FaceTurn),
 }
 
-/// An algorithm you can perform on a cube
+/// Represents a series of moves you can perform on a cube
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
-pub struct MoveList {
+pub struct Algorithm {
     pub(crate) moves: Vec<Move>,
 }
 
-/// Occurs when a string cannot be read as a `MoveList`
+/// Occurs when a string cannot be read as a [`Algorithm`]
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum MoveParseError {
     #[error("Unknown Symbol {0}")]
@@ -42,7 +44,7 @@ pub enum MoveParseError {
 }
 
 impl FaceTurn {
-    /// This creates the move that will 'undo' a given move
+    /// This creates the move that will undo a given move
     #[must_use]
     pub const fn inverse(&self) -> Self {
         const fn inv(t: u8) -> u8 {
@@ -60,7 +62,7 @@ impl FaceTurn {
 }
 
 impl Move {
-    /// This creates the move that will 'undo' a given move
+    /// This creates the move that will undo a given move
     #[must_use]
     pub const fn inverse(&self) -> Self {
         match self {
@@ -69,8 +71,9 @@ impl Move {
     }
 }
 
-impl MoveList {
+impl Algorithm {
     /// Creates a shorter set of moves that still leaves the cube in the same state at the end
+    ///
     /// For example, combining U U into U2, or U U' into nothing
     #[must_use]
     pub fn simplify(&self) -> Self {
@@ -96,7 +99,7 @@ impl MoveList {
         })
     }
 
-    /// Creates a `MoveList` from a `&str`, mostly a convience function, or a way to take input from the user
+    /// Creates a [`Algorithm`] from a `&str`, mostly a convience function, or a way to take input from the user
     ///
     /// # Errors
     ///
@@ -114,7 +117,8 @@ impl MoveList {
     }
 
     /// Calulates the inverse for a whole algorthm at once.
-    /// If a given `MoveList` is performed on a cube, then `MoveList::inverse()` is perfermed, the cube will return to its origonal state
+    ///
+    /// If a given [`Algorithm`] is performed on a cube, then if `Algorithm::inverse()` is perfermed, the cube will return to its origonal state
     #[must_use]
     pub fn inverse(&self) -> Self {
         Self {
@@ -122,27 +126,42 @@ impl MoveList {
         }
     }
 
-    /// Combines two `MoveList`s in the form of ABA'B'
+    /// Combines two [`Algorithm`]s in the form of ABA'B'
     #[must_use]
     pub fn commute(&self, other: &Self) -> Self {
         self.clone() + other + &self.inverse() + &other.inverse()
     }
 
-    /// Combines two `MoveList`s in the form of ABA'
+    /// Combines two [`Algorithm`]s in the form of ABA'
     #[must_use]
     pub fn permute(&self, other: &Self) -> Self {
         self.clone() + other + &self.inverse()
     }
 
-    /// A sample `MoveList` that is used often in speedcubing
+    /// A sample [`Algorithm`] that is used often in speedcubing
     #[must_use]
     pub fn sexy() -> Self {
         Self::from("R U R' U'").expect("this doesn't panic")
     }
+
+    /// Determines how many times an algorithm needs to be repeated, to return to its origonal state
+    #[must_use]
+    pub fn order(&self) -> u32 {
+        let solved_cube = Cube::new();
+        let mut cube = Cube::new();
+        cube = cube.apply(self.clone());
+        let mut count = 1;
+
+        while cube != solved_cube {
+            cube = cube.apply(self.clone());
+            count += 1;
+        }
+        count
+    }
 }
 
 impl Add<Self> for FaceTurn {
-    type Output = MoveList;
+    type Output = Algorithm;
 
     fn add(self, rhs: Self) -> Self::Output {
         let new_moves = match (self, rhs) {
@@ -188,7 +207,7 @@ impl From<FaceTurn> for Move {
 }
 
 impl Add<Self> for Move {
-    type Output = MoveList;
+    type Output = Algorithm;
 
     fn add(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
@@ -197,7 +216,7 @@ impl Add<Self> for Move {
     }
 }
 
-impl Add<&Self> for MoveList {
+impl Add<&Self> for Algorithm {
     type Output = Self;
 
     fn add(self, rhs: &Self) -> Self::Output {
@@ -233,7 +252,7 @@ impl From<nom::Err<nom::error::Error<&str>>> for MoveParseError {
     }
 }
 
-impl<T> From<Vec<T>> for MoveList
+impl<T> From<Vec<T>> for Algorithm
 where
     T: Into<Move> + Copy,
 {
@@ -252,16 +271,16 @@ mod simplification_tests {
     #[test]
     #[allow(non_snake_case)]
     fn U_then_U_rev_does_nothing() {
-        let moves: MoveList = vec![FaceTurn::U(1), FaceTurn::U(3)].into();
+        let moves: Algorithm = vec![FaceTurn::U(1), FaceTurn::U(3)].into();
         let actual = moves.simplify();
 
-        assert_eq!(actual, MoveList::default());
+        assert_eq!(actual, Algorithm::default());
     }
 
     #[test]
     #[allow(non_snake_case)]
     fn U_simplifies_to_U() {
-        let moves: MoveList = vec![FaceTurn::U(1)].into();
+        let moves: Algorithm = vec![FaceTurn::U(1)].into();
         let actual = moves.simplify();
 
         assert_eq!(actual, moves);
@@ -270,8 +289,8 @@ mod simplification_tests {
     #[test]
     #[allow(non_snake_case)]
     fn U_is_not_the_same_as_U_rev() {
-        let u: MoveList = vec![FaceTurn::U(1)].into();
-        let u_rev: MoveList = vec![FaceTurn::U(3)].into();
+        let u: Algorithm = vec![FaceTurn::U(1)].into();
+        let u_rev: Algorithm = vec![FaceTurn::U(3)].into();
 
         assert_ne!(u, u_rev);
     }
@@ -279,9 +298,9 @@ mod simplification_tests {
     #[test]
     #[allow(non_snake_case)]
     fn two_Us_simplifies_to_U2() {
-        let us: MoveList = vec![FaceTurn::U(1), FaceTurn::U(1)].into();
+        let us: Algorithm = vec![FaceTurn::U(1), FaceTurn::U(1)].into();
         let actual = us.simplify();
-        let expected: MoveList = vec![FaceTurn::U(2)].into();
+        let expected: Algorithm = vec![FaceTurn::U(2)].into();
 
         assert_eq!(actual, expected);
     }
@@ -289,9 +308,9 @@ mod simplification_tests {
     #[test]
     #[allow(non_snake_case)]
     fn U_then_U2_simplifies_to_URev() {
-        let turns: MoveList = vec![FaceTurn::U(1), FaceTurn::U(2)].into();
+        let turns: Algorithm = vec![FaceTurn::U(1), FaceTurn::U(2)].into();
         let actual = turns.simplify();
-        let expected: MoveList = vec![FaceTurn::U(3)].into();
+        let expected: Algorithm = vec![FaceTurn::U(3)].into();
 
         assert_eq!(actual, expected);
     }
@@ -299,9 +318,9 @@ mod simplification_tests {
     #[test]
     #[allow(non_snake_case)]
     fn U2_then_U_simplifies_to_URev() {
-        let turns: MoveList = vec![FaceTurn::U(2), FaceTurn::U(1)].into();
+        let turns: Algorithm = vec![FaceTurn::U(2), FaceTurn::U(1)].into();
         let actual = turns.simplify();
-        let expected: MoveList = vec![FaceTurn::U(3)].into();
+        let expected: Algorithm = vec![FaceTurn::U(3)].into();
 
         assert_eq!(actual, expected);
     }
@@ -309,7 +328,7 @@ mod simplification_tests {
     #[test]
     #[allow(non_snake_case)]
     fn four_Us_simplifies_to_nothing() {
-        let turns: MoveList = vec![
+        let turns: Algorithm = vec![
             FaceTurn::U(1),
             FaceTurn::U(1),
             FaceTurn::U(1),
@@ -317,7 +336,7 @@ mod simplification_tests {
         ]
         .into();
         let actual = turns.simplify();
-        let expected: MoveList = MoveList { moves: Vec::new() };
+        let expected: Algorithm = Algorithm { moves: Vec::new() };
 
         assert_eq!(actual, expected);
     }
@@ -325,7 +344,7 @@ mod simplification_tests {
     #[test]
     #[allow(non_snake_case)]
     fn U_F_does_not_simplify() {
-        let turns: MoveList = vec![FaceTurn::U(1), FaceTurn::F(1)].into();
+        let turns: Algorithm = vec![FaceTurn::U(1), FaceTurn::F(1)].into();
         let actual = turns.simplify();
         let expected = turns.clone();
 
@@ -335,7 +354,7 @@ mod simplification_tests {
     #[test]
     #[allow(non_snake_case)]
     fn F_U_does_not_simplify() {
-        let turns: MoveList = vec![FaceTurn::F(1), FaceTurn::U(1)].into();
+        let turns: Algorithm = vec![FaceTurn::F(1), FaceTurn::U(1)].into();
         let actual = turns.simplify();
         let expected = turns;
 
@@ -344,7 +363,7 @@ mod simplification_tests {
 
     #[test]
     fn complicated_move_simplification() {
-        let turns: MoveList = vec![
+        let turns: Algorithm = vec![
             FaceTurn::U(1),
             FaceTurn::R(3),
             FaceTurn::F(1),
@@ -359,7 +378,7 @@ mod simplification_tests {
         ]
         .into();
         let actual = turns.simplify();
-        let expected = MoveList::default();
+        let expected = Algorithm::default();
 
         assert_eq!(actual, expected);
     }
@@ -367,7 +386,7 @@ mod simplification_tests {
     #[test]
     #[allow(non_snake_case)]
     fn U2_D2_U2_simplifies_the_two_outside_U2s() {
-        let moves: MoveList = vec![FaceTurn::U(2), FaceTurn::D(2), FaceTurn::U(2)].into();
+        let moves: Algorithm = vec![FaceTurn::U(2), FaceTurn::D(2), FaceTurn::U(2)].into();
         let actual = moves.simplify();
         let expected = vec![FaceTurn::D(2)].into();
 
@@ -377,7 +396,7 @@ mod simplification_tests {
     #[test]
     #[allow(non_snake_case)]
     fn D2_U2_D2_simplifies_the_two_outside_D2s() {
-        let moves: MoveList = vec![FaceTurn::D(2), FaceTurn::U(2), FaceTurn::D(2)].into();
+        let moves: Algorithm = vec![FaceTurn::D(2), FaceTurn::U(2), FaceTurn::D(2)].into();
         let actual = moves.simplify();
         let expected = vec![FaceTurn::U(2)].into();
 
@@ -395,7 +414,7 @@ mod parsing_tests {
     #[allow(non_snake_case)]
     fn U() {
         let s = "U";
-        let actual = MoveList::from(s).unwrap();
+        let actual = Algorithm::from(s).unwrap();
         let expected = vec![FaceTurn::U(1)].into();
 
         assert_eq!(actual, expected);
@@ -405,7 +424,7 @@ mod parsing_tests {
     #[allow(non_snake_case)]
     fn F() {
         let s = "F";
-        let actual = MoveList::from(s).unwrap();
+        let actual = Algorithm::from(s).unwrap();
         let expected = vec![FaceTurn::F(1)].into();
 
         assert_eq!(actual, expected);
@@ -415,7 +434,7 @@ mod parsing_tests {
     #[allow(non_snake_case)]
     fn U2() {
         let s = "U2";
-        let actual = MoveList::from(s).unwrap();
+        let actual = Algorithm::from(s).unwrap();
         let expected = vec![FaceTurn::U(2)].into();
 
         assert_eq!(actual, expected);
@@ -424,7 +443,7 @@ mod parsing_tests {
     #[test]
     fn t_perm_spaces() {
         let s = "R U R' U' R' F R2 U' R' U' R U R' F'";
-        let actual = MoveList::from(s).unwrap();
+        let actual = Algorithm::from(s).unwrap();
         let expected = vec![
             FaceTurn::R(1),
             FaceTurn::U(1),
@@ -449,7 +468,7 @@ mod parsing_tests {
     #[test]
     fn errors_on_unknown_input() {
         let s = "R U foobar R' U'";
-        let actual = MoveList::from(s).unwrap_err();
+        let actual = Algorithm::from(s).unwrap_err();
         let expected = MoveParseError::UnknownSymbol(" foobar R' U'".to_string());
 
         assert_eq!(actual, expected);
@@ -465,9 +484,9 @@ mod inverse_tests {
     #[test]
     #[allow(non_snake_case)]
     fn U_moves_to_U_rev() {
-        let m = MoveList::from("U").unwrap();
+        let m = Algorithm::from("U").unwrap();
         let actual = m.inverse();
-        let expected = MoveList::from("U'").unwrap();
+        let expected = Algorithm::from("U'").unwrap();
 
         assert_eq!(actual, expected);
     }
@@ -475,9 +494,9 @@ mod inverse_tests {
     #[test]
     #[allow(non_snake_case)]
     fn sexy_inverses_to_inverse_sexy() {
-        let m = MoveList::from("R U R' U'").unwrap();
+        let m = Algorithm::from("R U R' U'").unwrap();
         let actual = m.inverse();
-        let expected = MoveList::from("U R U' R'").unwrap();
+        let expected = Algorithm::from("U R U' R'").unwrap();
 
         assert_eq!(actual, expected);
     }
@@ -485,10 +504,10 @@ mod inverse_tests {
     #[test]
     #[allow(non_snake_case)]
     fn R_and_U_commutes_to_sexy() {
-        let r = MoveList::from("R").unwrap();
-        let u = MoveList::from("U").unwrap();
+        let r = Algorithm::from("R").unwrap();
+        let u = Algorithm::from("U").unwrap();
         let actual = r.commute(&u);
-        let expected = MoveList::sexy();
+        let expected = Algorithm::sexy();
 
         assert_eq!(actual, expected);
     }
@@ -496,11 +515,48 @@ mod inverse_tests {
     #[test]
     #[allow(non_snake_case)]
     fn F_and_sexy_permute() {
-        let r = MoveList::from("F").unwrap();
-        let sexy = MoveList::sexy();
+        let r = Algorithm::from("F").unwrap();
+        let sexy = Algorithm::sexy();
         let actual = r.permute(&sexy);
-        let expected = MoveList::from("F R U R' U' F'").unwrap();
+        let expected = Algorithm::from("F R U R' U' F'").unwrap();
 
+        assert_eq!(actual, expected);
+    }
+}
+
+#[cfg(test)]
+mod order_tests {
+    use super::*;
+    #[allow(unused_imports)]
+    use pretty_assertions::{assert_eq, assert_ne, assert_str_eq};
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn order_of_U_is_4() {
+        let m = Algorithm::from("U").unwrap();
+
+        let actual = m.order();
+        let expected = 4;
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn order_of_U2_is_2() {
+        let m = Algorithm::from("U2").unwrap();
+
+        let actual = m.order();
+        let expected = 2;
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn order_of_sexy_is_6() {
+        let m = Algorithm::sexy();
+
+        let actual = m.order();
+        let expected = 6;
         assert_eq!(actual, expected);
     }
 }
