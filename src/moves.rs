@@ -255,6 +255,26 @@ impl Algorithm {
         }
         count
     }
+
+    /// Determines if an [`Algorithm`] solves another one
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rubiks_moves::moves::Algorithm;
+    ///
+    /// let scramble = Algorithm::from("R' U' F D2 L2 F R2 U2 R2 B D2 L B2 D' B2 L' R' B D2 B U2 L U2 R' U' F").unwrap();
+    /// let solution = Algorithm::from("D2 F' D2 U2 F' L2 D R2 D B2 F L2 R' F' D U'").unwrap();
+    ///
+    /// assert!(solution.solves(&scramble));
+    /// ```
+    #[must_use]
+    pub fn solves(&self, other: &Self) -> bool {
+        let mut cube = Cube::new();
+        cube = cube.apply(self.clone());
+        cube = cube.apply(other.clone());
+        cube == Cube::new()
+    }
 }
 
 impl Add<Self> for FaceTurn {
@@ -655,5 +675,30 @@ mod order_tests {
         let actual = m.order();
         let expected = 6;
         assert_eq!(actual, expected);
+    }
+}
+
+#[cfg(test)]
+mod solves_tests {
+    use super::*;
+    #[allow(unused_imports)]
+    use pretty_assertions::{assert_eq, assert_ne, assert_str_eq};
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn U_rev_solves_U() {
+        let scramble = Algorithm::from("U").unwrap();
+        let solution = Algorithm::from("U'").unwrap();
+
+        assert!(solution.solves(&scramble));
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn F_does_not_solve_U() {
+        let scramble = Algorithm::from("U").unwrap();
+        let solution = Algorithm::from("F").unwrap();
+
+        assert!(!solution.solves(&scramble));
     }
 }
