@@ -31,6 +31,14 @@ pub enum Move {
 }
 
 /// Represents a series of moves you can perform on a cube
+///
+/// # Example
+///
+///```
+/// use rubiks_moves::moves::Algorithm;
+///
+/// let alg = Algorithm::from("R U R' U'").unwrap();
+/// ```
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct Algorithm {
     pub(crate) moves: Vec<Move>,
@@ -45,6 +53,17 @@ pub enum MoveParseError {
 
 impl FaceTurn {
     /// This creates the move that will undo a given move
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rubiks_moves::moves::FaceTurn;
+    ///
+    /// let u = FaceTurn::U(1);
+    /// let u_rev = FaceTurn::U(3);
+    ///
+    /// assert_eq!(u.inverse(), u_rev);
+    /// ```
     #[must_use]
     pub const fn inverse(&self) -> Self {
         const fn inv(t: u8) -> u8 {
@@ -63,6 +82,17 @@ impl FaceTurn {
 
 impl Move {
     /// This creates the move that will undo a given move
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rubiks_moves::moves::{Move, FaceTurn};
+    ///
+    /// let u = Move::FaceTurn(FaceTurn::U(1));
+    /// let u_rev = Move::FaceTurn(FaceTurn::U(3));
+    ///
+    /// assert_eq!(u.inverse(), u_rev);
+    /// ```
     #[must_use]
     pub const fn inverse(&self) -> Self {
         match self {
@@ -75,6 +105,18 @@ impl Algorithm {
     /// Creates a shorter set of moves that still leaves the cube in the same state at the end
     ///
     /// For example, combining U U into U2, or U U' into nothing
+    ///
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rubiks_moves::moves::Algorithm;
+    ///
+    /// let alg = Algorithm::from("U U").unwrap();
+    /// let simplified = Algorithm::from("U2").unwrap();
+    ///
+    /// assert_eq!(alg.simplify(), simplified);
+    /// ```
     #[must_use]
     pub fn simplify(&self) -> Self {
         let mut prev_ter = self.clone();
@@ -104,6 +146,14 @@ impl Algorithm {
     /// # Errors
     ///
     /// This errors when it is not given a space seperated list of single face turns e.g. U, F', or D2
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rubiks_moves::moves::{Algorithm, Move, FaceTurn};
+    ///
+    /// let parsed_alg = Algorithm::from("F' L").unwrap();
+    /// ```
     pub fn from(s: &str) -> Result<Self, MoveParseError> {
         let (s, m) = separated_list0(
             space1,
@@ -119,6 +169,17 @@ impl Algorithm {
     /// Calulates the inverse for a whole algorthm at once.
     ///
     /// If a given [`Algorithm`] is performed on a cube, then if `Algorithm::inverse()` is perfermed, the cube will return to its origonal state
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rubiks_moves::moves::Algorithm;
+    ///
+    /// let original = Algorithm::from("F R U").unwrap();
+    /// let inversed = Algorithm::from("U' R' F'").unwrap();
+    ///
+    /// assert_eq!(original.inverse(), inversed);
+    /// ```
     #[must_use]
     pub fn inverse(&self) -> Self {
         Self {
@@ -127,24 +188,60 @@ impl Algorithm {
     }
 
     /// Combines two [`Algorithm`]s in the form of ABA'B'
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rubiks_moves::moves::Algorithm;
+    ///
+    /// let r = Algorithm::from("R").unwrap();
+    /// let u = Algorithm::from("U").unwrap();
+    ///
+    /// let sexy = Algorithm::from("R U R' U'").unwrap();
+    ///
+    /// assert_eq!(r.commute(&u), sexy);
+    /// ```
     #[must_use]
     pub fn commute(&self, other: &Self) -> Self {
         self.clone() + other + &self.inverse() + &other.inverse()
     }
 
     /// Combines two [`Algorithm`]s in the form of ABA'
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rubiks_moves::moves::Algorithm;
+    ///
+    /// let r = Algorithm::from("R").unwrap();
+    /// let u = Algorithm::from("U").unwrap();
+    ///
+    /// let r_u_r_rev = Algorithm::from("R U R'").unwrap();
+    ///
+    /// assert_eq!(r.permute(&u), r_u_r_rev);
+    /// ```
     #[must_use]
     pub fn permute(&self, other: &Self) -> Self {
         self.clone() + other + &self.inverse()
     }
 
-    /// A sample [`Algorithm`] that is used often in speedcubing
+    /// A sample [`Algorithm`] that is used often in speedcubing. Equvalent to R U R' U'
     #[must_use]
     pub fn sexy() -> Self {
         Self::from("R U R' U'").expect("this doesn't panic")
     }
 
     /// Determines how many times an algorithm needs to be repeated, to return to its origonal state
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rubiks_moves::moves::Algorithm;
+    ///
+    /// let sexy = Algorithm::from("R U R' U'").unwrap();
+    ///
+    /// assert_eq!(sexy.order(), 6);
+    /// ```
     #[must_use]
     pub fn order(&self) -> u32 {
         let solved_cube = Cube::new();
