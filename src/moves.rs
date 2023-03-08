@@ -1,6 +1,7 @@
 //! Representations for algorithms taht can be performed
-use std::ops::Add;
+use std::{fmt::Display, ops::Add};
 
+use itertools::Itertools;
 use nom::{
     branch::alt, bytes::complete::tag, character::complete::space1, combinator::map,
     multi::separated_list0, IResult,
@@ -102,6 +103,12 @@ impl Move {
 }
 
 impl Algorithm {
+    /// Creates an [`Algorithm`] that doesn't have any moves
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { moves: Vec::new() }
+    }
+
     /// Creates a shorter set of moves that still leaves the cube in the same state at the end
     ///
     /// For example, combining U U into U2, or U U' into nothing
@@ -274,6 +281,59 @@ impl Algorithm {
         cube = cube.apply(self.clone());
         cube = cube.apply(other.clone());
         cube == Cube::new()
+    }
+}
+
+impl IntoIterator for Algorithm {
+    type Item = Move;
+
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.moves.into_iter()
+    }
+}
+
+impl Display for Algorithm {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let moves = self.moves.iter().map(|m| format!("{m}")).join(" ");
+        write!(f, "{moves}")
+    }
+}
+
+impl Display for Move {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let m = match self {
+            Self::FaceTurn(turn) => format!("{turn}"),
+        };
+        write!(f, "{m}")
+    }
+}
+
+impl Display for FaceTurn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let m = match self {
+            Self::U(1) => "U",
+            Self::U(2) => "U2",
+            Self::U(3) => "U'",
+            Self::D(1) => "D",
+            Self::D(2) => "D2",
+            Self::D(3) => "D'",
+            Self::F(1) => "F",
+            Self::F(2) => "F2",
+            Self::F(3) => "F'",
+            Self::B(1) => "B",
+            Self::B(2) => "B2",
+            Self::B(3) => "B'",
+            Self::L(1) => "L",
+            Self::L(2) => "L2",
+            Self::L(3) => "L'",
+            Self::R(1) => "R",
+            Self::R(2) => "R2",
+            Self::R(3) => "R'",
+            m => panic!("Unknown turn: {m}"),
+        };
+        write!(f, "{m}")
     }
 }
 
@@ -700,5 +760,22 @@ mod solves_tests {
         let solution = Algorithm::from("F").unwrap();
 
         assert!(!solution.solves(&scramble));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[allow(unused_imports)]
+    use pretty_assertions::{assert_eq, assert_ne, assert_str_eq};
+
+    #[test]
+    fn display() {
+        let moves = "U2 F B'";
+        let alg = Algorithm::from(moves).unwrap();
+
+        let actual = format!("{alg}");
+
+        assert_str_eq!(actual, moves);
     }
 }
